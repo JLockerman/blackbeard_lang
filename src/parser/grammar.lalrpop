@@ -1,0 +1,78 @@
+use std::str::FromStr;
+use crate::parser::ast::{Statement, Declaration, Type, Expression};
+
+grammar;
+
+pub Program: Vec<Statement> = (<Statement>)*;
+
+pub Statement: Statement = {
+    <var: (<Identifier> "=")?> <expr: Expression> ";" =>
+        crate::parser::ast::Statement::Assignment{var, expr},
+    <Declaration> => Statement::Declaration(<>),
+};
+
+pub Declaration: Declaration = {
+    "function" <name: Identifier> "(" <args: Comma<NameAndType>> ")"
+        <returns: ("returns" <Type>)?> "{" <body: Program> "}" =>
+            Declaration::Function{name, args, returns, body},
+    "object" <name: Identifier> "{" <fields: Comma<NameAndType>> "}" =>
+        Declaration::Object{name, fields},
+};
+
+NameAndType: (String, Type) = {
+    <Identifier> "is a" <Type> => (<>),
+};
+
+Type: Type = {
+    <ptrs: ("pointer to")*> <base: Identifier> => {
+        let mut typ = Type::Named(base);
+        for _ in ptrs {
+            typ = Type::Pointer(typ.into())
+        }
+        typ
+    },
+};
+
+pub Expression: Expression = {
+    <function: Identifier> "(" <args: Comma<Expression>> ")" =>
+        Expression::Call{function, args},
+    <Identifier> => Expression::Variable(<>),
+};
+
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
+//NewlineDelimited<T>: Vec<T> = {
+//    "\n"* <(<T> "\n"+)*>
+//};
+
+Identifier: String = <r"[[:alpha:]]\w*"> => String::from_str(<>).unwrap();
+
+match {
+    r"pointer-to" => "pointer to",
+    r"is-a" => "is a",
+} else {
+    r"//[^\n\r]*[\n\r]*" => { }, // Skip `// comments`
+    "function",
+    "object",
+    "returns",
+    "(",
+    ")",
+    "{",
+    "}",
+    "=",
+    ",",
+    "$",
+    ";",
+} else {
+    r"\s*" => {},
+    r"[[:alpha:]]\w*",
+}
