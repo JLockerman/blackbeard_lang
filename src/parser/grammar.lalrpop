@@ -13,25 +13,27 @@ pub Statement: Statement = {
 
 pub Declaration: Declaration = {
     "function" <name: Identifier> "(" <args: Comma<NameAndType>> ")"
-        <returns: ("returns" <Type>)?> "{" <body: Program> "}" =>
+        <returns: (":" <Type>)?> "{" <body: Program> "}" =>
             Declaration::Function{name, args, returns, body},
     "object" <name: Identifier> "{" <fields: Comma<NameAndType>> "}" =>
         Declaration::Object{name, fields},
 };
 
 NameAndType: (String, Type) = {
-    <Identifier> "is a" <Type> => (<>),
+    <Identifier> ":" <Type> => (<>),
 };
 
 Type: Type = {
-    <ptrs: ("pointer to")*> <base: Identifier> => {
-        let mut typ = Type::Named(base);
-        for _ in ptrs {
-            typ = Type::Pointer(typ.into())
-        }
-        typ
-    },
+    "{}->" <base: Type> => Type::Pointer(base.into()),
+    "[" <SliceType> "]",
+    <base: Identifier> => Type::Named(base.into()),
 };
+
+SliceType: Type = {
+    "..." <Type> => Type::Slice(<>.into()),
+    "..?" <Type> => Type::UninitSlice(<>.into()),
+    <length: UnsignedInteger> <ty: Type> => Type::Array(length, ty.into()),
+}
 
 pub Expression: Expression = {
     <function: Identifier> "(" <args: Comma<Expression>> ")" =>
@@ -50,29 +52,31 @@ Comma<T>: Vec<T> = {
     }
 };
 
-//NewlineDelimited<T>: Vec<T> = {
-//    "\n"* <(<T> "\n"+)*>
-//};
+Identifier: String = <identifier> => String::from_str(<>).unwrap();
 
-Identifier: String = <r"[[:alpha:]]\w*"> => String::from_str(<>).unwrap();
+UnsignedInteger: u64 = <integer> => u64::from_str(<>)
+    .expect("invalid integer");
 
 match {
-    r"pointer-to" => "pointer to",
-    r"is-a" => "is a",
+    "{}->" => "{}->",
+    ":" => ":",
 } else {
-    r"//[^\n\r]*[\n\r]*" => { }, // Skip `// comments`
+    r"//[^\n\r]*[\n\r]*" => {}, // Skip `// comments`
     "function",
     "object",
-    "returns",
     "(",
     ")",
     "{",
     "}",
+    "[",
+    "]",
     "=",
     ",",
-    "$",
     ";",
+    "...",
+    "..?"
 } else {
     r"\s*" => {},
-    r"[[:alpha:]]\w*",
+    r"\d+" => integer,
+    r"[[:alpha:]]\w*" => identifier,
 }

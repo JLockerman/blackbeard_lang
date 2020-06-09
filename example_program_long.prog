@@ -1,0 +1,15 @@
+object Coordinate {
+    x is a Integer,
+    y is a Integer,
+    z is a Integer,
+}
+
+function test(
+    a is a pointer to Integer,
+    b is a pointer to array of int,
+    c is a pointer to Coordinate
+) {
+    a = b;
+}
+
+a = test(p);

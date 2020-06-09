@@ -20,6 +20,9 @@ pub enum Declaration {
 pub enum Type {
     Named(String),
     Pointer(Box<Type>),
+    Slice(Box<Type>),
+    UninitSlice(Box<Type>),
+    Array(u64, Box<Type>),
 }
 
 #[derive(Debug)]

@@ -1,15 +1,43 @@
-object Coordinate {
-    x is a Integer,
-    y is a Integer,
-    z is a Integer,
+object TypeSyntaxes {
+            int: Integer,
+          other: OtherStruct,
+        pointer: {}-> int,
+           ptr2: {}-> {}-> int,
+          array: {}-> [4 int],
+          slice: {}-> [...int],
+    uninitslice: {}-> [..?int],
+       multidim: {}-> [...{}->[...int]],
 }
 
-function test(
-    a is a pointer to Integer,
-    b is a pointer to array of int,
-    c is a pointer to Coordinate
-) {
-    a = b;
+function assignment(a: {}-> int, b: {}->[...int], c: {}-> Coordinate) {
+    a = {}->3;
+    a->{} = 4;
+    b = a;
+
+    b->[1] = 3;
+
+    c->{} = Coordinate {
+        x: 1,
+        y: 12,
+        z; 22,
+    }
+    c->x = 12;
+
+    d = Coordinate {
+        x: 1,
+        y: 12,
+        z; 22,
+    }
+    d.x = 13;
+
+    for i in 0..n {
+    }
+
+    for i in (0 to n) {
+    }
 }
 
-a = test(p);
+a = {}->3
+a.foo()
+a->{}.bar()
+
