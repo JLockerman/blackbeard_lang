@@ -1,12 +1,20 @@
 use std::str::FromStr;
-use crate::parser::ast::{Statement, Declaration, Type, Expression};
+use crate::parser::ast::{
+    BinOp,
+    PrefixOp,
+    Statement,
+    Declaration,
+    Type,
+    Expression,
+    Literal,
+};
 
 grammar;
 
 pub Program: Vec<Statement> = (<Statement>)*;
 
 pub Statement: Statement = {
-    <var: (<Identifier> "=")?> <expr: Expression> ";" =>
+    <var: (<Expression> "=")?> <expr: Expression> ";" =>
         crate::parser::ast::Statement::Assignment{var, expr},
     <Declaration> => Statement::Declaration(<>),
 };
@@ -32,14 +40,88 @@ Type: Type = {
 SliceType: Type = {
     "..." <Type> => Type::Slice(<>.into()),
     "..?" <Type> => Type::UninitSlice(<>.into()),
-    <length: UnsignedInteger> <ty: Type> => Type::Array(length, ty.into()),
+    <length: ArrayLength> <ty: Type> => Type::Array(length, ty.into()),
 }
 
-pub Expression: Expression = {
+pub Expression = <AddExpression>;
+
+AddExpression: Expression = {
+    ExpressionLevel<AddExpression, MulExpression, AddOp>,
+}
+
+MulExpression: Expression = {
+    ExpressionLevel<MulExpression, PrefixExpression, MulOp>,
+}
+
+PrefixExpression: Expression = {
+    <ops: PrefixOp*> <expr: EqExpression> => {
+        let mut expr = expr;
+        for op in ops {
+            expr = Expression::Prefix(op, expr.into())
+        }
+        expr
+    }
+}
+
+EqExpression: Expression = {
+    ExpressionLevel<LogicExpression, LogicExpression, EqOp>,
+}
+
+LogicExpression: Expression = {
+    ExpressionLevel<LogicExpression, PointerExpression, LogicOp>,
+}
+
+PointerExpression: Expression = {
+    <FunctionExpression> "->{}" => Expression::Deref(<>.into()),
+    "{}->" <FunctionExpression> => Expression::PointerTo(<>.into()),
+    <ptr: FunctionExpression> "->" <id: Identifier> => Expression::Project(ptr.into(), id.into()),
+    <src: FunctionExpression> "->" "[" <index: Expression> "]" =>
+        Expression::DerefIndex(src.into(), index.into()),
+    <FunctionExpression>,
+}
+
+FunctionExpression: Expression = {
     <function: Identifier> "(" <args: Comma<Expression>> ")" =>
         Expression::Call{function, args},
     <Identifier> => Expression::Variable(<>),
+    <Literal> => Expression::Literal(<>),
+    "(" <Expression> ")",
 };
+
+#[inline]
+AddOp: BinOp = {
+    "+" => BinOp::Plus, "-" => BinOp::Minus,
+}
+
+#[inline]
+MulOp: BinOp = {
+    "*" => BinOp::Mul, "/" => BinOp::Div,
+}
+
+#[inline]
+LogicOp: BinOp = {
+    "and" => BinOp::And, "or" => BinOp::Or,
+}
+
+#[inline]
+PrefixOp: PrefixOp = {
+    "-" => PrefixOp::Neg, "not" => PrefixOp::Not,
+}
+
+#[inline]
+EqOp: BinOp = {
+    "==" => BinOp::Eq, "!=" => BinOp::Neq,
+}
+
+#[inline]
+ExpressionLevel<L, R, Op>: Expression = {
+    <left: L> <op: Op> <right: R> => Expression::Binary{
+        op,
+        left: left.into(),
+        right: right.into(),
+    },
+    R,
+}
 
 Comma<T>: Vec<T> = {
     <v:(<T> ",")*> <e:T?> => match e {
@@ -52,31 +134,54 @@ Comma<T>: Vec<T> = {
     }
 };
 
+Literal: Literal = {
+    <UnsignedInteger> => Literal::Integer(<>),
+    <Float> => Literal::Float(<>),
+}
+
 Identifier: String = <identifier> => String::from_str(<>).unwrap();
 
-UnsignedInteger: u64 = <integer> => u64::from_str(<>)
+UnsignedInteger: u128 = <integer> => u128::from_str(<>)
     .expect("invalid integer");
+
+Float: f64 = <float> => f64::from_str(<>)
+    .expect("invalid floating-point number");
+
+ArrayLength: u64 = <integer> => u64::from_str(<>)
+    .expect("invalid array length");
 
 match {
     "{}->" => "{}->",
+    "->{}" => "->{}",
     ":" => ":",
 } else {
+    "->" => "->",
     r"//[^\n\r]*[\n\r]*" => {}, // Skip `// comments`
     "function",
     "object",
+    "and",
+    "or",
+    "not",
     "(",
     ")",
     "{",
     "}",
     "[",
     "]",
-    "=",
     ",",
     ";",
     "...",
-    "..?"
+    "..?",
+    "+",
+    "-",
+    "*",
+    "/",
+    "==",
+    "!=",
 } else {
+    "=",
     r"\s*" => {},
+    r"\d+\.\d+" => float,
     r"\d+" => integer,
     r"[[:alpha:]]\w*" => identifier,
 }

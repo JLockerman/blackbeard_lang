@@ -1,7 +1,7 @@
 
 #[derive(Debug)]
 pub enum Statement {
-    Assignment{var: Option<String>, expr: Expression},
+    Assignment{var: Option<Expression>, expr: Expression},
     Declaration(Declaration),
 }
 
@@ -27,6 +27,30 @@ pub enum Type {
 
 #[derive(Debug)]
 pub enum Expression {
-    Call{function: String, args: Vec<Expression>},
+    Literal(Literal),
     Variable(String),
+    Deref(Box<Expression>),
+    PointerTo(Box<Expression>),
+    Project(Box<Expression>, String),
+    DerefIndex(Box<Expression>, Box<Expression>),
+    Call{function: String, args: Vec<Expression>},
+    Prefix(PrefixOp, Box<Expression>),
+    Binary{op: BinOp, left: Box<Expression>, right: Box<Expression>},
+}
+
+#[derive(Debug)]
+pub enum BinOp {
+    Plus, Minus, Mul, Div, And, Or, Eq, Neq,
+}
+
+#[derive(Debug)]
+pub enum PrefixOp {
+    Neg, Not,
+}
+
+#[derive(Debug)]
+pub enum Literal {
+    Integer(u128),
+    Float(f64),
+    // String(&'static str),
 }
