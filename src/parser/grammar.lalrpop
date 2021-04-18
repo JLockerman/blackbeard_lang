@@ -7,6 +7,7 @@ use crate::parser::ast::{
     Type,
     Expression,
     Literal,
+    Projection,
 };
 
 grammar;
@@ -72,12 +73,20 @@ LogicExpression: Expression = {
 }
 
 PointerExpression: Expression = {
-    <FunctionExpression> "->{}" => Expression::Deref(<>.into()),
-    "{}->" <FunctionExpression> => Expression::PointerTo(<>.into()),
-    <ptr: FunctionExpression> "->" <id: Identifier> => Expression::Project(ptr.into(), id.into()),
-    <src: FunctionExpression> "->" "[" <index: Expression> "]" =>
-        Expression::DerefIndex(src.into(), index.into()),
+    <pointer_to: "{}->"?> <src: FunctionExpression> <projections: Projection+> => {
+        match pointer_to {
+            None => Expression::Project(src.into(), projections),
+            Some(..) => Expression::ProjectAndRef(src.into(), projections),
+        }
+    },
     <FunctionExpression>,
+}
+
+Projection: Projection = {
+    "->{}" => Projection::Deref,
+    "." <id: Identifier> =>  Projection::Field(id.into()),
+    "->" <id: Identifier> => Projection::DerefField(id.into()),
+    "->" "[" <index: Expression> "]" => Projection::DerefIndex(index.into()),
 }
 
 FunctionExpression: Expression = {
@@ -155,6 +164,7 @@ match {
     "->{}" => "->{}",
     ":" => ":",
 } else {
+    ".",
     "->" => "->",
     r"//[^\n\r]*[\n\r]*" => {}, // Skip `// comments`
     "function",

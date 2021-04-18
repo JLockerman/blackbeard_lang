@@ -1,11 +1,11 @@
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     Assignment{var: Option<Expression>, expr: Expression},
     Declaration(Declaration),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Declaration {
     Function{
         name: String,
@@ -16,7 +16,7 @@ pub enum Declaration {
     Object{name: String, fields: Vec<(String, Type)>},
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Type {
     Named(String),
     Pointer(Box<Type>),
@@ -25,30 +25,36 @@ pub enum Type {
     Array(u64, Box<Type>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Literal(Literal),
     Variable(String),
-    Deref(Box<Expression>),
-    PointerTo(Box<Expression>),
-    Project(Box<Expression>, String),
-    DerefIndex(Box<Expression>, Box<Expression>),
+    Project(Box<Expression>, Vec<Projection>),
+    ProjectAndRef(Box<Expression>, Vec<Projection>),
     Call{function: String, args: Vec<Expression>},
     Prefix(PrefixOp, Box<Expression>),
     Binary{op: BinOp, left: Box<Expression>, right: Box<Expression>},
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub enum Projection {
+    Deref,
+    Field(String),
+    DerefField(String),
+    DerefIndex(Box<Expression>),
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum BinOp {
     Plus, Minus, Mul, Div, And, Or, Eq, Neq,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum PrefixOp {
     Neg, Not,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Literal {
     Integer(u128),
     Float(f64),

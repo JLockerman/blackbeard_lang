@@ -10,7 +10,7 @@ object TypeSyntaxes {
 }
 
 function assignment(a: {}-> int, b: {}->[...int], c: {}-> Coordinate) {
-    a = {}->3;
+    a = new(3)
     a->{} = 4;
     b = a;
 

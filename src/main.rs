@@ -12,7 +12,8 @@ use lalrpop_util::ParseError;
 
 use parser::grammar::Token;
 
-mod parser;
+pub mod parser;
+pub mod interpreter;
 
 pub fn main() {
     let file = std::env::args().skip(1).next().unwrap();
